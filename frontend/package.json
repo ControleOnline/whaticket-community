@@ -56,6 +56,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
+    "dev": "react-scripts  --openssl-legacy-provider start",
     "legacy": "react-scripts start",
     "build": "GENERATE_SOURCEMAP=false react-scripts build",
     "winBuild": "set \"GENERATE_SOURCEMAP=false\" && react-scripts build",
