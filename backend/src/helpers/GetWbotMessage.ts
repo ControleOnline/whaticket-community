@@ -1,4 +1,4 @@
-import { proto, WALegacySocket } from "@whiskeysockets/baileys";
+import { proto } from "@whiskeysockets/baileys";
 import Ticket from "../models/Ticket";
 import GetTicketWbot from "./GetTicketWbot";
 import AppError from "../errors/AppError";
@@ -13,35 +13,44 @@ export const GetWbotMessage = async (
 
   let limit = 20;
 
-  const fetchWbotMessagesGradually = async (): Promise<
-    proto.WebMessageInfo | Message | null | undefined
-  > => {
-    if (getSock.type === "legacy") {
-      const wbot: WALegacySocket = getSock;
-      const chatMessages = await wbot.fetchMessagesFromWA(
-        `${ticket.contact.number}@${
-          ticket.isGroup ? "g.us" : "s.whatsapp.net"
-        }`,
-        limit
-      );
+  const fetchWbotMessagesGradually = async (): Promise<proto.WebMessageInfo | Message | null | undefined> => {
 
-      const msgFound = chatMessages.find(msg => msg.key.id === messageId);
 
-      if (!msgFound && limit < 400) {
-        limit += 50;
-        return fetchWbotMessagesGradually();
-      }
+    // if (getSock.type === "legacy") {
+    //   const wbot: WALegacySocket = getSock;
+    //   const chatMessages = await wbot.fetchMessagesFromWA(
+    //     `${ticket.contact.number}@${
+    //       ticket.isGroup ? "g.us" : "s.whatsapp.net"
+    //     }`,
+    //     limit
+    //   );
 
-      return msgFound;
-    }
+    //   const msgFound = chatMessages.find(msg => msg.key.id === messageId);
 
-    if (getSock.type === "md") {
-      const msgFound = await GetMessageService({
-        id: messageId
-      });
+    //   if (!msgFound && limit < 400) {
+    //     limit += 50;
+    //     return fetchWbotMessagesGradually();
+    //   }
 
-      return msgFound;
-    }
+    //   return msgFound;
+    // }
+
+    // if (getSock.type === "md") {
+    //   const msgFound = await GetMessageService({
+    //     id: messageId
+    //   });
+
+    //   return msgFound;
+    // }
+
+    // return null;
+
+
+    const msgFound = await GetMessageService({
+      id: messageId
+    });
+
+    return msgFound;
 
     return null;
   };

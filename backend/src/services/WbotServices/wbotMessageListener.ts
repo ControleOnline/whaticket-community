@@ -5,7 +5,6 @@ import * as Sentry from "@sentry/node";
 import { isNil, isNull, head } from "lodash";
 
 import {
-  AnyWASocket,
   downloadContentFromMessage,
   extractMessageContent,
   getContentType,
@@ -13,7 +12,6 @@ import {
   MediaType,
   MessageUpsertType,
   proto,
-  WALegacySocket,
   WAMessage,
   BinaryNode,
   WAMessageStubType,
@@ -53,7 +51,7 @@ import { debounce } from "../../helpers/Debounce";
 
 const fs = require('fs')
 
-type Session = AnyWASocket & {
+type Session = WASocket & {
   id?: number;
   store?: Store;
 };
@@ -388,15 +386,10 @@ export const getQuotedMessageId = (msg: proto.IWebMessageInfo) => {
 
 const getMeSocket = (wbot: Session): IMe => {
 
-  return wbot.type === "legacy"
-    ? {
-      id: jidNormalizedUser((wbot as WALegacySocket).state.legacy.user.id),
-      name: (wbot as WALegacySocket).state.legacy.user.name
-    }
-    : {
-      id: jidNormalizedUser((wbot as WASocket).user.id),
-      name: (wbot as WASocket).user.name
-    };
+  return {
+    id: jidNormalizedUser((wbot as WASocket).user.id),
+    name: (wbot as WASocket).user.name
+  };
 };
 
 const getSenderMessage = (
@@ -412,9 +405,7 @@ const getSenderMessage = (
 };
 
 const getContactMessage = async (msg: proto.IWebMessageInfo, wbot: Session) => {
-  if (wbot.type === "legacy") {
-    return wbot.store.contacts[msg.key.participant || msg.key.remoteJid] as IMe;
-  }
+
 
   const isGroup = msg.key.remoteJid.includes("g.us");
   const rawNumber = msg.key.remoteJid.replace(/\D/g, "");
@@ -1366,7 +1357,7 @@ const handleMessage = async (
     if (msgIsGroupBlock?.value === "enabled" && isGroup) return;
 
     if (isGroup) {
-      const grupoMeta = await wbot.groupMetadata(msg.key.remoteJid, false);
+      const grupoMeta = await wbot.groupMetadata(msg.key.remoteJid);
       const msgGroupContact = {
         id: grupoMeta.id,
         name: grupoMeta.subject
@@ -1400,7 +1391,7 @@ const handleMessage = async (
     });
 
     if (unreadMessages === 0 && whatsapp.complationMessage && formatBody(whatsapp.complationMessage, contact).trim().toLowerCase() === lastMessage.body.trim().toLowerCase()) {
-        return;
+      return;
     }
 
     const ticket = await FindOrCreateTicketService(contact, wbot.id!, unreadMessages, companyId, groupContact);
@@ -1434,27 +1425,27 @@ const handleMessage = async (
          * Tratamento para avaliação do atendente
          */
 
-         // dev Ricardo: insistir a responder avaliação 
-         const rate_ = Number(bodyMessage);
+        // dev Ricardo: insistir a responder avaliação
+        const rate_ = Number(bodyMessage);
 
-         if ((ticket?.lastMessage.includes('_Insatisfeito_') || ticket?.lastMessage.includes('Por favor avalie nosso atendimento.')) &&  (!isFinite(rate_))) {
-             const debouncedSentMessage = debounce(
-               async () => {
-                 await wbot.sendMessage(
-                   `${ticket.contact.number}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"
-                   }`,
-                   {
-                     text: 'Por favor avalie nosso atendimento.'
-                   }
-                 );
-               },
-               1000,
-               ticket.id
-             );
-             debouncedSentMessage();
-             return;
-         }
-         // dev Ricardo
+        if ((ticket?.lastMessage.includes('_Insatisfeito_') || ticket?.lastMessage.includes('Por favor avalie nosso atendimento.')) && (!isFinite(rate_))) {
+          const debouncedSentMessage = debounce(
+            async () => {
+              await wbot.sendMessage(
+                `${ticket.contact.number}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"
+                }`,
+                {
+                  text: 'Por favor avalie nosso atendimento.'
+                }
+              );
+            },
+            1000,
+            ticket.id
+          );
+          debouncedSentMessage();
+          return;
+        }
+        // dev Ricardo
 
         if (ticketTraking !== null && verifyRating(ticketTraking)) {
           handleRating(msg, ticket, ticketTraking);
@@ -1858,9 +1849,7 @@ const wbotMessageListener = async (wbot: Session, companyId: number): Promise<vo
       });
     });
 
-    wbot.ev.on("messages.set", async (messageSet: IMessage) => {
-      messageSet.messages.filter(filterMessages).map(msg => msg);
-    });
+
   } catch (error) {
     Sentry.captureException(error);
     logger.error(`Error handling wbot message listener. Err: ${error}`);
